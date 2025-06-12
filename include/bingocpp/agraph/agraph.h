@@ -258,6 +258,12 @@ namespace bingo
     // helper functions
     void notify_agraph_modification();
     void update();
+    // extracted methods from update helper function
+    void performDefaultConstantResize(int const_number_input);
+    void resizeConstantsArrayIfNeeded(int const_number_input); 
+    int countAndUpdateConstants();
+    void updateConstantsArray(); 
+    void updateSimplifiedCommandArray(); 
   };
 } // namespace bingo
 #endif // BINGOCPP_INCLUDE_BINGOCPP_AGRAPH_H_

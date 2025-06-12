@@ -332,4 +332,28 @@ int AGraph::countAndUpdateConstants() {
     return new_const_number;
 }
 
+void AGraph::resizeConstantsArrayIfNeeded(int const_number_input){
+  int optimization_aggression = 0; 
+  
+  if (optimization_aggression == 0 && const_number_input <= simplified_constants_.rows()){
+    simplified_constants_.conservativeResize(const_number_input, Eigen::NoChange);
+    return; 
+  }
+
+  if (optimization_aggression == 1 && const_number_input == simplified_constants_.rows()){
+    // reuse old constants
+    return; 
+  }
+
+  performDefaultConstantResize(const_number_input);
+}
+
+void AGraph::performDefaultConstantResize(int const_number_input){
+  simplified_constants_.resize(const_number_input, 1);
+  simplified_constants_.setOnes(const_number_input, 1);
+  if (const_number_input > 0){
+    needs_opt_ = true;
+  }
+}
+
 } // namespace bingo
