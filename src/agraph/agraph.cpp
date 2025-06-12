@@ -15,15 +15,24 @@ namespace bingo
 
   namespace
   {
+
+    constexpr int kOpIdx = 0;     // Operation index
+    constexpr int kFirstArgumentIndex = 1; // First parameter index
+    constexpr int kSecondArgumentIndex = 2; // Second parameter index
+    constexpr int kInitialCommandRows = 0;
+    constexpr int kInitialCommandCols = 3;
+    constexpr int kInitialConstantsCol = 1;
     const double kFitnessNotSet = 1e9;
+
+    constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
 
   } // namespace
 
   AGraph::AGraph(const bool use_simplification)
   {
-    command_array_ = Eigen::ArrayX3i(0, 3);
-    simplified_command_array_ = Eigen::ArrayX3i(0, 3);
-    simplified_constants_ = Eigen::ArrayXXd(0, 1);
+    command_array_ = Eigen::ArrayX3i(kInitialCommandRows, kInitialCommandCols);
+    simplified_command_array_ = Eigen::ArrayX3i(kInitialCommandRows, kInitialCommandCols);
+    simplified_constants_ = Eigen::ArrayXXd(kInitialCommandRows, kInitialConstantsCol);
     needs_opt_ = false;
     fitness_ = kFitnessNotSet;
     fit_set_ = false;
@@ -293,47 +302,34 @@ namespace bingo
     return (command_array_ != agraph.GetCommandArray()).count();
   }
 
-  void AGraph::update()
-  {
-    if (use_simplification_)
-    {
-      simplified_command_array_ = simplification_backend::PythonSimplifyStack(
-          command_array_);
-    }
-    else
-    {
-      simplified_command_array_ = simplification_backend::SimplifyStack(
-          command_array_);
-    }
-    int new_const_number = 0;
-    for (int i = 0; i < simplified_command_array_.rows(); i++)
-    {
-      if (simplified_command_array_(i, kOpIdx) == Op::kConstant)
-      {
-        simplified_command_array_.row(i) << Op::kConstant, new_const_number, new_const_number;
-        new_const_number++;
-      }
-    }
-
-    int optimization_aggression = 0;
-    if (optimization_aggression == 0 && new_const_number <= simplified_constants_.rows())
-    {
-      simplified_constants_.conservativeResize(new_const_number, Eigen::NoChange);
-    }
-    else if (optimization_aggression == 1 && new_const_number == simplified_constants_.rows())
-    {
-      // reuse old constants
-    }
-    else
-    {
-      simplified_constants_.resize(new_const_number, 1);
-      simplified_constants_.setOnes(new_const_number, 1);
-      if (new_const_number > 0)
-      {
-        needs_opt_ = true;
-      }
-    }
+  void AGraph::update() {
+    updateSimplifiedCommandArray();
+    updateConstantsArray();
     modified_ = false;
-  }
+}
+
+void AGraph::updateSimplifiedCommandArray() {
+    if (use_simplification_) {
+        simplified_command_array_ = simplification_backend::PythonSimplifyStack(command_array_);
+    } else {
+        simplified_command_array_ = simplification_backend::SimplifyStack(command_array_);
+    }
+}
+
+void AGraph::updateConstantsArray() {
+    int new_const_number = countAndUpdateConstants();
+    resizeConstantsArrayIfNeeded(new_const_number);
+}
+
+int AGraph::countAndUpdateConstants() {
+    int new_const_number = 0;
+    for (int i = 0; i < simplified_command_array_.rows(); i++) {
+        if (simplified_command_array_(i, kOpIdx) == Op::kConstant) {
+            simplified_command_array_.row(i) << Op::kConstant, new_const_number, new_const_number;
+            new_const_number++;
+        }
+    }
+    return new_const_number;
+}
 
 } // namespace bingo
